@@ -22,7 +22,25 @@ const __dirname = path.dirname(__filename);
 export const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
+const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const wildcardOrigins = allowedOrigins
+  .filter((origin) => origin.includes("*"))
+  .map((origin) => new RegExp(`^${origin.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow non-browser and same-origin requests
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (wildcardOrigins.some((pattern) => pattern.test(origin))) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    }
+  })
+);
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan("dev"));
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
