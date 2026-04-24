@@ -27,6 +27,14 @@ app.use(express.json({ limit: "2mb" }));
 app.use(morgan("dev"));
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
+app.get("/", (_req, res) => {
+  res.json({
+    status: "ok",
+    message: "Business Nexus backend is running",
+    docs: "/api/health"
+  });
+});
+
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
