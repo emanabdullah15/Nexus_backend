@@ -5,6 +5,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
+
+// routes
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import meetingRoutes from "./routes/meetingRoutes.js";
@@ -14,6 +16,7 @@ import messageRoutes from "./routes/messageRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import collaborationRequestRoutes from "./routes/collaborationRequestRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,34 +25,49 @@ const __dirname = path.dirname(__filename);
 export const app = express();
 
 app.use(helmet());
-const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "http://localhost:5173")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-const wildcardOrigins = allowedOrigins
-  .filter((origin) => origin.includes("*"))
-  .map((origin) => new RegExp(`^${origin.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`));
+
+// ✅ FIXED CORS (IMPORTANT)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://nexus-frontend-nine-jet.vercel.app"
+  
+];
+
+// optional env support (production best practice)
+if (process.env.CLIENT_URLS) {
+  allowedOrigins.push(...process.env.CLIENT_URLS.split(",").map(o => o.trim()));
+}
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // allow non-browser and same-origin requests
+    origin: function (origin, callback) {
+      // allow server-to-server or postman
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      if (wildcardOrigins.some((pattern) => pattern.test(origin))) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
-    }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(null, false); // reject others
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
+
+app.options("*", cors());
+
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan("dev"));
+
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
+// routes
 app.get("/", (_req, res) => {
   res.json({
     status: "ok",
-    message: "Business Nexus backend is running",
-    docs: "/api/health"
+    message: "Business Nexus backend is running"
   });
 });
 
